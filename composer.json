@@ -1,0 +1,29 @@
+{
+    "name": "youredik/deletion-review",
+    "description": "Code review + tests for the Deletion module",
+    "type": "project",
+    "require": {
+        "php": ">=8.2",
+        "doctrine/orm": "^2.19",
+        "psr/log": "^3.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^11.0",
+        "symfony/cache": "^8.1"
+    },
+    "autoload": {
+        "psr-4": {
+            "Shared\\": "src/Shared/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests/"
+        }
+    },
+    "config": {
+        "allow-plugins": {
+            "composer/package-versions-deprecated": true
+        }
+    }
+}
