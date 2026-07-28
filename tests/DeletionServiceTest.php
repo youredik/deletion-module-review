@@ -15,18 +15,16 @@ use Tests\Fixtures\{AssocChildEntity, InvoiceEntity, NoteEntity, OrderEntity, Or
 require_once __DIR__ . '/Fixtures/proxy.php';
 
 /**
- * Тесты для DeletionService.
+ * Тесты для DeletionService. Две группы.
  *
- * Разделены на две группы:
- *   1) «Зафиксированное поведение» — то, что работает верно, и это надо защитить от регрессий.
- *   2) «Найденные дефекты» — тесты, которые доказывают проблемы из ревью. Они зелёные,
- *      потому что проверяют фактическое поведение, но каждый снабжён пометкой,
- *      каким поведение должно быть. Это исполняемая часть code review.
+ * Первая — то, что работает верно и должно таким остаться.
+ * Вторая повторяет проблемы из ревью. Эти тесты зелёные, потому что проверяют,
+ * как модуль ведёт себя сейчас; в комментарии к каждому написано, как должно быть.
  */
 final class DeletionServiceTest extends TestCase
 {
     // ────────────────────────────────────────────────────────────────
-    // 1. Зафиксированное поведение
+    // Как должно работать
     // ────────────────────────────────────────────────────────────────
 
     public function testEntityWithoutAnyRelationsCanBeDeleted(): void
@@ -98,16 +96,15 @@ final class DeletionServiceTest extends TestCase
     }
 
     // ────────────────────────────────────────────────────────────────
-    // 2. Найденные дефекты
+    // Найденные проблемы
     // ────────────────────────────────────────────────────────────────
 
     /**
-     * ДЕФЕКТ 1 (критичный). Doctrine отдаёт lazy-loaded сущность как прокси,
-     * у которого $object::class равен Proxies\__CG__\<FQCN>. Карта связей построена
-     * по настоящим именам классов, поэтому поиск детей не находит ничего
-     * и canDelete возвращает true при живых блокирующих детях.
+     * Проблема 1, самая опасная. Лениво загруженная сущность приходит как прокси,
+     * у которого $object::class равен Proxies\__CG__\<FQCN>. Карта построена по настоящим
+     * именам классов, поэтому потомки не находятся и удаление разрешается.
      *
-     * Ожидаемое поведение: результат должен совпадать с testBlockingChildPreventsParentDeletion.
+     * Как должно быть: тот же результат, что в testBlockingChildPreventsParentDeletion.
      */
     public function testProxyEntitySilentlyLosesAllChildren(): void
     {
@@ -120,14 +117,14 @@ final class DeletionServiceTest extends TestCase
 
         $result = $service->canDelete($proxy);
 
-        self::assertTrue($result->canDelete, 'ФАКТ: удаление разрешено, хотя блокирующий ребёнок существует');
-        self::assertSame([], $result->dependents, 'ФАКТ: зависимости не найдены вовсе');
+        self::assertTrue($result->canDelete, 'удаление разрешено, хотя блокирующий потомок на месте');
+        self::assertSame([], $result->dependents, 'зависимости не найдены вовсе');
     }
 
     /**
-     * ДЕФЕКТ 1б (та же причина). Атрибуты в PHP не наследуются: если RelationTo
-     * объявлен на абстрактной базовой сущности, наследники его не видят.
-     * При наследовании таблиц связь просто перестаёт существовать для модуля.
+     * Проблема 1б, причина та же. Атрибуты в PHP не наследуются: если RelationTo
+     * написан на абстрактном предке, наследники его не увидят. При наследовании
+     * таблиц связь для модуля просто исчезает.
      */
     public function testRelationDeclaredOnParentClassIsInvisibleToSubclass(): void
     {
@@ -138,14 +135,14 @@ final class DeletionServiceTest extends TestCase
 
         $result = $service->canDelete(new OrderEntity());
 
-        self::assertTrue($result->canDelete, 'ФАКТ: связь с базового класса потеряна');
+        self::assertTrue($result->canDelete, 'связь, объявленная у предка, потеряна');
         self::assertSame([], $result->dependents);
     }
 
     /**
-     * ДЕФЕКТ 2. Связь REFERENCE + cascade NONE полностью выпадает из ответа:
-     * записи есть, но ни в childrenDelete, ни в childrenDetach они не попадают.
-     * Потребитель API не узнает, что на сущность кто-то ссылается.
+     * Проблема 2. Связь REFERENCE вместе с cascade NONE выпадает из ответа целиком:
+     * записи есть, но не попадают ни в childrenDelete, ни в childrenDetach.
+     * Тот, кто вызвал метод, не узнает, что на сущность кто-то ссылается.
      */
     public function testReferenceWithCascadeNoneDisappearsFromResult(): void
     {
@@ -162,9 +159,9 @@ final class DeletionServiceTest extends TestCase
     }
 
     /**
-     * ДЕФЕКТ 3. Ровно тот пример, что описан в README (`private OrderEntity $order`),
-     * приводит к TypeError: getScalarFkValue() объявлен как int|string|null,
-     * но читает поле-ассоциацию и получает объект.
+     * Проблема 3. Ровно тот пример, что описан в README (`private OrderEntity $order`),
+     * даёт TypeError: getScalarFkValue() обещает int|string|null, а читает обычную
+     * связь и получает объект.
      */
     public function testAssociationFieldCrashesWithTypeError(): void
     {
@@ -179,8 +176,8 @@ final class DeletionServiceTest extends TestCase
     }
 
     /**
-     * ДЕФЕКТ 4. Неинициализированное типизированное свойство роняет проверку:
-     * Reflection читает значение без isInitialized().
+     * Проблема 4. Незаполненное типизированное свойство роняет проверку:
+     * значение читается без isInitialized().
      */
     public function testUninitializedTypedPropertyCrashes(): void
     {
@@ -195,7 +192,7 @@ final class DeletionServiceTest extends TestCase
     }
 
     /**
-     * ДЕФЕКТ 5. Ветка «родителей» жёстко проставляет hard = false,
+     * Проблема 5. Ветка «родителей» жёстко ставит hard = false,
      * поэтому проверка hasHardParent в analyze() не может сработать никогда —
      * это мёртвый код, а запросы ради него всё равно выполняются.
      */
@@ -217,7 +214,7 @@ final class DeletionServiceTest extends TestCase
     }
 
     /**
-     * ДЕФЕКТ 6. canDelete() склеивает в dependents три разных списка,
+     * Проблема 6. canDelete() склеивает в dependents три разных списка,
      * и флаг hard перестаёт означать «блокирует удаление»:
      * у detach-группы hard = true, но удаление при этом разрешено.
      */
