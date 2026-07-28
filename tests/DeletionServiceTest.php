@@ -10,7 +10,7 @@ use Doctrine\ORM\Mapping\ClassMetadataFactory;
 use PHPUnit\Framework\TestCase;
 use Shared\Deletion\DeletionService;
 use Shared\Deletion\Dto\DependentGroupDto;
-use Tests\Fixtures\{AssocChildEntity, NoteEntity, OrderEntity, OrderItemEntity, ShipmentEntity, TagEntity};
+use Tests\Fixtures\{AssocChildEntity, InvoiceEntity, NoteEntity, OrderEntity, OrderItemEntity, ShipmentEntity, TagEntity};
 
 require_once __DIR__ . '/Fixtures/proxy.php';
 
@@ -122,6 +122,24 @@ final class DeletionServiceTest extends TestCase
 
         self::assertTrue($result->canDelete, 'ФАКТ: удаление разрешено, хотя блокирующий ребёнок существует');
         self::assertSame([], $result->dependents, 'ФАКТ: зависимости не найдены вовсе');
+    }
+
+    /**
+     * ДЕФЕКТ 1б (та же причина). Атрибуты в PHP не наследуются: если RelationTo
+     * объявлен на абстрактной базовой сущности, наследники его не видят.
+     * При наследовании таблиц связь просто перестаёт существовать для модуля.
+     */
+    public function testRelationDeclaredOnParentClassIsInvisibleToSubclass(): void
+    {
+        $service = $this->makeService(
+            [OrderEntity::class, InvoiceEntity::class],
+            new FakeReadRepository(byAssociation: [InvoiceEntity::class => [new InvoiceEntity(60)]])
+        );
+
+        $result = $service->canDelete(new OrderEntity());
+
+        self::assertTrue($result->canDelete, 'ФАКТ: связь с базового класса потеряна');
+        self::assertSame([], $result->dependents);
     }
 
     /**

@@ -30,7 +30,7 @@ cp -r /путь/к/Deletion src/Shared/Deletion
 PHP 8.5.6, Doctrine ORM 2.19, PHPUnit 11.5.
 
 ```
-Tests: 11, Assertions: 27
+Tests: 12, Assertions: 29
 ```
 
 Одно предупреждение об устаревшем `ReflectionProperty::setAccessible()` приходит из

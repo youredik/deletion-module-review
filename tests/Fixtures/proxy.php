@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-// Имитация Doctrine-прокси: реальное имя класса у lazy-loaded сущности
+// Имитация Doctrine-прокси: реальное имя класса у лениво загруженной сущности
 // выглядит как Proxies\__CG__\<FQCN>, а не как сама сущность.
 namespace Proxies\__CG__\Tests\Fixtures;
 
