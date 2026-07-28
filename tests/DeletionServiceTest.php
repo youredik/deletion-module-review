@@ -249,10 +249,11 @@ final class DeletionServiceTest extends TestCase
             $metadata[$class] = new ClassMetadata($class);
         }
 
-        $factory = $this->createMock(ClassMetadataFactory::class);
+        // createStub, а не createMock: проверяем состояние результата, а не факты вызовов.
+        $factory = $this->createStub(ClassMetadataFactory::class);
         $factory->method('getAllMetadata')->willReturn(array_values($metadata));
 
-        $em = $this->createMock(EntityManagerInterface::class);
+        $em = $this->createStub(EntityManagerInterface::class);
         $em->method('getMetadataFactory')->willReturn($factory);
         $em->method('getClassMetadata')->willReturnCallback(
             static fn (string $class): ClassMetadata => $metadata[$class] ?? new ClassMetadata($class)
